@@ -36,22 +36,63 @@ func main() {
 		}
 
 		go ssh.DiscardRequests(reqs)
-		go func(key string, chans <-chan ssh.NewChannel) {
-			for nChan := range chans {
-				if nChan.ChannelType() != "session" {
-					nChan.Reject(ssh.UnknownChannelType, "unknown channel type")
-					continue
-				}
+		go handleChannels("", chans)
+    }
+}
 
-				ch, _, err := nChan.Accept()
-				if err != nil {
-					fmt.Printf("Failed to accept connection because of %s", err)
-				}
-				ch.Write([]byte("Authenticated successfully! Welcome to GoSsh.\r\n"))
-                ch.CloseWrite()
-                ch.Write([]byte("boo"))
-				ch.Close()
-			}
-		}("", chans)
-	}
+func handleChannels(key string, chans <-chan ssh.NewChannel) {
+    for nChan := range chans {
+        if nChan.ChannelType() != "session" {
+            nChan.Reject(ssh.UnknownChannelType, "unknown channel type")
+            continue
+        }
+
+        ch, reqs, err := nChan.Accept()
+        if err != nil {
+            fmt.Printf("Failed to accept connection because of %s", err)
+        }
+        ch.Write([]byte("Authenticated successfully! Welcome to GoSsh.\r\n"))
+        go handleRequests(reqs, ch)
+        go echoIncomingBytes(ch)
+    }
+}
+
+
+func handleRequests(ins <-chan *ssh.Request, ch ssh.Channel) {
+    defer ch.Close()
+    for req := range ins {
+        switch req.Type {
+            case "shell" :
+                if len(req.Payload) == 0 {
+                    req.Reply(true, nil)
+                }
+        }
+        fmt.Println("Request type:", req.Type)
+    }
+}
+
+
+func echoIncomingBytes(ch ssh.Channel) {
+    ch.Write([]byte{'>', '>', '>', ' '})
+    reader := make([]byte, 12, 12)
+    var outs []byte
+    for {
+        bRead, err := ch.Read(reader)
+        if err != nil {
+            fmt.Println("Error reading buffer.", err)
+            return
+        }
+        if bRead > 0 {
+            ch.Write(reader)
+            outs = append(outs, reader[:bRead]...)
+            reader = make([]byte, 12, 12)
+        }
+        bLast := outs[len(outs)-1]
+        if bLast == 13 {
+            ch.Write([]byte{'\n'})
+            ch.Write(outs)
+            ch.Write([]byte{'\r', '\n', '>', '>', '>', ' '})
+            outs = nil
+        }
+    }
 }
