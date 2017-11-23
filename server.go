@@ -7,8 +7,8 @@ import (
 	"os"
 )
 
-func main() {
-	listener, err := net.Listen("tcp", "127.0.0.1:")
+func start() {
+	listener, err := net.Listen("tcp4", ":22")
 	fmt.Printf("Will listen at port %v\n", listener.Addr())
 	if err != nil {
 		fmt.Println(err)
