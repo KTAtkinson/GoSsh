@@ -43,8 +43,10 @@ func (t *Terminal) Run() {
             t.channel.Write(reout)
         case 13:
             outs := []byte{'\r', '\n'}
+            if t.line != nil {
             outs = append(outs, t.line...)
             outs = append(outs, '\r', '\n')
+            }
 
             t.channel.Write(outs)
             t.line = nil
