@@ -1,4 +1,4 @@
-package main
+package server
 
 import (
 	"bufio"
@@ -11,7 +11,7 @@ import (
 	"os"
 )
 
-func addAuthedKey(path string) error {
+func AddAuthedKey(path string) error {
 	authWriter, err := os.Create(".ssh/authorized_keys")
 	if err != nil {
 		return err

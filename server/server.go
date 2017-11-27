@@ -1,4 +1,4 @@
-package main
+package server 
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"strconv"
 )
 
-func start() {
+func Start() {
 	listener, err := net.Listen("tcp4", ":22")
 	fmt.Printf("Will listen at port %v\n", listener.Addr())
 	if err != nil {
