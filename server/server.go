@@ -1,11 +1,11 @@
-package server 
+package server
 
 import (
 	"fmt"
+	"github.com/ktatkinson/GoSsh/pty"
 	"golang.org/x/crypto/ssh"
 	"net"
 	"os"
-    "github.com/ktatkinson/GoSsh/pty"
 )
 
 func Start() {
@@ -53,7 +53,7 @@ func handleChannels(key string, chans <-chan ssh.NewChannel) {
 			fmt.Printf("Failed to accept connection because of %s", err)
 		}
 		ch.Write([]byte("Authenticated successfully! Welcome to GoSsh.\r\n"))
-        term := pty.NewTerminal(ch, ">>> ")
+		term := pty.NewTerminal(ch, ">>> ")
 		go handleRequests(reqs, ch)
 		go term.Run()
 	}
