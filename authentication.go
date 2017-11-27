@@ -12,30 +12,29 @@ import (
 )
 
 func addAuthedKey(path string) error {
-    authWriter, err := os.Create(".ssh/authorized_keys")
-    if err != nil {
-        return err
-    }
-    writer := bufio.NewWriter(authWriter)
+	authWriter, err := os.Create(".ssh/authorized_keys")
+	if err != nil {
+		return err
+	}
+	writer := bufio.NewWriter(authWriter)
 
-    newKey, err := os.Open(path)
-    fStat, err := newKey.Stat()
-    if err != nil {
-        return err
-    }
-    keyBuf := make([]byte, 4096)
-    read, err := newKey.Read(keyBuf)
-    if read == 0 {
-        return errors.New("No key in key file.")
-    }
-    if err != nil {
-        return err
-    }
-    publicKey, _, _, _, err := ssh.ParseAuthorizedKey(keyBuf)
-    marshaledKey := ssh.MarshalAuthorizedKey(publicKey)
-    writer.Write(marshaledKey)
-    writer.Flush()
-    return err
+	newKey, err := os.Open(path)
+	if err != nil {
+		return err
+	}
+	keyBuf := make([]byte, 4096)
+	read, err := newKey.Read(keyBuf)
+	if read == 0 {
+		return errors.New("No key in key file.")
+	}
+	if err != nil {
+		return err
+	}
+	publicKey, _, _, _, err := ssh.ParseAuthorizedKey(keyBuf)
+	marshaledKey := ssh.MarshalAuthorizedKey(publicKey)
+	writer.Write(marshaledKey)
+	writer.Flush()
+	return err
 }
 
 func getHostKey(keyPath string) (ssh.Signer, error) {
