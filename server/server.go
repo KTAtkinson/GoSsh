@@ -58,7 +58,7 @@ func (s *Server) Start() error {
 		serverConf.AddHostKey(s.hostKey)
 		_, chans, reqs, err := ssh.NewServerConn(conn, serverConf)
 		if err != nil {
-			return fmt.Errorf("Error opening server connection: %v", err)
+			fmt.Printf("Error opening server connection: %v", err)
 		}
 
 		go ssh.DiscardRequests(reqs)
