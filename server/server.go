@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+    "errors"
 )
 
 func Start(auth *Authenticator) {
@@ -89,7 +90,7 @@ func makeAuthCallback(auth *Authenticator) func(ssh.ConnMetadata, ssh.PublicKey)
 		if err != nil {
 			return nil, err
 		} else if !authd {
-			return nil, nil
+			return nil, errors.New("Failed to authenticate (public key)")
 		}
 
 		return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
