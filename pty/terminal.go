@@ -37,32 +37,43 @@ func (t *Terminal) Run() {
 			fmt.Println("No characters in boffer.")
 		}
 
-		char := reader[0]
-		switch char {
-		case 127:
-			reout := []byte{27, '['}
-			reout = strconv.AppendInt(reout, int64(len(t.line)), 10)
-			reout = append(reout, 'D', 27, '[', 'K')
-			t.line = t.line[:len(t.line)-1]
-			reout = append(reout, t.line...)
-			t.channel.Write(reout)
-		case 13:
-			outs := []byte{'\r', '\n'}
-			if t.line != nil {
-				outs = append(outs, t.line...)
-				outs = append(outs, '\r', '\n')
-			}
+        outs, isPrefix := t.processByte(reader[0])
+		t.channel.Write(outs)
+        if !isPrefix {
+            t.writePrompt()
+        }
+        reader = make([]byte, 1, 1)
+    }
+}
 
-			t.channel.Write(outs)
-			t.line = nil
-
-			t.writePrompt()
-		default:
-			t.channel.Write(reader)
-			t.line = append(t.line, char)
-			reader = make([]byte, 1, 1)
-		}
-	}
+func (t *Terminal) processByte(char byte) ([]byte, bool) {
+    bytes := []byte{}
+    var isPrefix bool
+    switch char {
+    case 127:
+        isPrefix = true
+        if len(t.line) < 1 {
+            return bytes, isPrefix
+        }
+        bytes = append(bytes, 27, '[')
+        bytes = strconv.AppendInt(bytes, int64(len(t.line)), 10)
+        bytes = append(bytes, 'D', 27, '[', 'K')
+        t.line = t.line[:len(t.line)-1]
+        bytes = append(bytes, t.line...)
+    case 13:
+        isPrefix = false
+        bytes = []byte{'\r', '\n'}
+        if len(t.line) > 0 {
+            bytes = append(bytes, t.line...)
+            bytes = append(bytes, '\r', '\n')
+        }
+        t.line = nil
+    default:
+        isPrefix = true
+        bytes = []byte{char}
+        t.line = append(t.line, char)
+    }
+    return bytes, isPrefix
 }
 
 func (t *Terminal) writePrompt() error {
