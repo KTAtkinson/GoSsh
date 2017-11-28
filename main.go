@@ -22,7 +22,12 @@ func main() {
 		action = "start"
 	}
 
-	auth, err := server.NewAuthenticator("/.ssh/authorized_keys")
+    authdKeys, err := os.OpenFile("/.ssh/authorized_keys", os.O_RDWR | os.O_APPEND | os.O_CREATE, 0755)
+    if err != nil {
+        fmt.Printf("Error loading authorized keys. %s", err.Error())
+    }
+    defer authdKeys.Close()
+	auth := server.NewAuthenticator(authdKeys)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -14,15 +14,11 @@ type Authenticator struct {
 	authdKeys *os.File
 }
 
-func NewAuthenticator(authdKeysPath string) (*Authenticator, error) {
-	file, err := os.Create(authdKeysPath)
-	if err != nil {
-		return nil, err
+func NewAuthenticator(authdKeys *os.File) (*Authenticator) {
+
+	return &Authenticator{
+		authdKeys: authdKeys,
 	}
-	auth := &Authenticator{
-		authdKeys: file,
-	}
-	return auth, nil
 }
 
 func (a *Authenticator) AddAuthdKey(path string) error {
