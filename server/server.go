@@ -1,45 +1,45 @@
 package server
 
 import (
+	"errors"
 	"fmt"
 	"github.com/ktatkinson/GoSsh/pty"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"net"
 	"os"
-    "errors"
 )
 
 type authenticator interface {
-    Authenticate(ssh.PublicKey) (bool, error)
-    AddAuthdKey(string) (error)
+	Authenticate(ssh.PublicKey) (bool, error)
+	AddAuthdKey(string) error
 }
 
 type Server struct {
-    authenticator
-    ip string
-    port int
+	authenticator
+	ip   string
+	port int
 
-    requestsHandler func(<-chan *ssh.Request, ssh.Channel)
-    hostKey ssh.Signer
+	requestsHandler func(<-chan *ssh.Request, ssh.Channel)
+	hostKey         ssh.Signer
 }
 
 func New(ip string, port int, hostKeyPath string, keyAuthenticator authenticator) (*Server, error) {
-    key, err := getHostKey(hostKeyPath)
-    if err != nil {
-        return nil, err
-    }
-    return &Server{
-        authenticator: keyAuthenticator,
-        ip: ip,
-        port: port,
-        requestsHandler: handleRequests,
-        hostKey: key,
-    }, nil
+	key, err := getHostKey(hostKeyPath)
+	if err != nil {
+		return nil, err
+	}
+	return &Server{
+		authenticator:   keyAuthenticator,
+		ip:              ip,
+		port:            port,
+		requestsHandler: handleRequests,
+		hostKey:         key,
+	}, nil
 }
 
-func (s *Server) HostAddr() string  {
-    return fmt.Sprintf("%s:%d", s.ip, s.port)
+func (s *Server) HostAddr() string {
+	return fmt.Sprintf("%s:%d", s.ip, s.port)
 }
 
 func (s *Server) Start() error {
@@ -85,15 +85,15 @@ func (s *Server) handleChannels(key string, chans <-chan ssh.NewChannel) {
 	}
 }
 
-func(s *Server) AuthenticateKey(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-    authd, err := s.Authenticate(key)
-    if err != nil {
-        return nil, err
-    } else if !authd {
-        return nil, errors.New("Failed to authenticate (public key)")
-    }
+func (s *Server) AuthenticateKey(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+	authd, err := s.Authenticate(key)
+	if err != nil {
+		return nil, err
+	} else if !authd {
+		return nil, errors.New("Failed to authenticate (public key)")
+	}
 
-    return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
+	return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
 }
 
 func handleRequests(ins <-chan *ssh.Request, ch ssh.Channel) {
