@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/ktatkinson/GoSsh/server"
+	"github.com/KTAtkinson/GoSsh/server"
 	"os"
 )
 

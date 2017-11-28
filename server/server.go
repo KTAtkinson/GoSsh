@@ -3,7 +3,7 @@ package server
 import (
 	"errors"
 	"fmt"
-	"github.com/ktatkinson/GoSsh/pty"
+	"github.com/KTAtkinson/GoSsh/pty"
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"net"
