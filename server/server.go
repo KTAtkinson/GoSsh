@@ -42,26 +42,24 @@ func (s *Server) HostAddr() string  {
     return fmt.Sprintf("%s:%d", s.ip, s.port)
 }
 
-func (s *Server) Start() {
+func (s *Server) Start() error {
 	listener, err := net.Listen("tcp4", s.HostAddr())
 	fmt.Printf("Will listen at port %v\n", listener.Addr())
 	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		return err
 	}
 
 	for {
 		conn, err := listener.Accept()
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Listener not accepting conntections: %s", err))
-			os.Exit(1)
+			return fmt.Errorf(fmt.Sprintf("Listener not accepting connections: %s", err))
 		}
 
 		serverConf := &ssh.ServerConfig{PublicKeyCallback: s.AuthenticateKey}
 		serverConf.AddHostKey(s.hostKey)
 		_, chans, reqs, err := ssh.NewServerConn(conn, serverConf)
 		if err != nil {
-			fmt.Println(fmt.Sprintf("Error connecting to client: %v", err))
+			return fmt.Errorf("Error opening server connection: %v", err)
 		}
 
 		go ssh.DiscardRequests(reqs)
@@ -97,6 +95,7 @@ func(s *Server) AuthenticateKey(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.
 
     return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
 }
+
 func handleRequests(ins <-chan *ssh.Request, ch ssh.Channel) {
 	defer ch.Close()
 	for req := range ins {

@@ -59,7 +59,6 @@ func (a *Authenticator) Authenticate(key ssh.PublicKey) (bool, error) {
 			curKey = bytes.TrimRight(curKey, "\n")
 		}
 
-		fmt.Printf("Found key:\n%s\n", curKey)
 		if bytes.Equal(keyContent, curKey) {
 			return true, nil
 		}

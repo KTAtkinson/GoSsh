@@ -32,7 +32,11 @@ func main() {
 	}
 	switch action {
 	case "start":
-		srvr.Start()
+		err = srvr.Start()
+        if err != null {
+            fmt.Print(err)
+            os.Exit(1)
+        }
 	case "add-key":
 		fmt.Println(flag.Arg(0))
 		err = srvr.AddAuthdKey(flag.Arg(1))
