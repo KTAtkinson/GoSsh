@@ -9,7 +9,12 @@ import (
 type Terminal struct {
 	prompt  []byte
 	line    []byte
-	channel ssh.Channel
+	channel TerminalReadWriter
+}
+
+type TerminalReadWriter interface {
+    Read([]byte) (int, error)
+    Write([]byte) (int, error)
 }
 
 func NewTerminal(channel ssh.Channel, prompt string) *Terminal {
@@ -20,7 +25,7 @@ func NewTerminal(channel ssh.Channel, prompt string) *Terminal {
 }
 
 func (t *Terminal) Run() {
-	t.WritePrompt()
+	t.writePrompt()
 	reader := make([]byte, 1, 1)
 	for {
 		bRead, err := t.channel.Read(reader)
@@ -51,7 +56,7 @@ func (t *Terminal) Run() {
 			t.channel.Write(outs)
 			t.line = nil
 
-			t.WritePrompt()
+			t.writePrompt()
 		default:
 			t.channel.Write(reader)
 			t.line = append(t.line, char)
@@ -60,7 +65,7 @@ func (t *Terminal) Run() {
 	}
 }
 
-func (t *Terminal) WritePrompt() error {
+func (t *Terminal) writePrompt() error {
 	_, err := t.channel.Write(t.prompt)
 	return err
 }
