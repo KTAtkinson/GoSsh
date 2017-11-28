@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/ktatkinson/GoSsh/server"
+	"os"
 )
 
 func main() {
@@ -19,12 +20,17 @@ func main() {
 		action = "start"
 	}
 
+	auth, err := server.NewAuthenticator("/.ssh/authorized_keys")
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+	}
 	switch action {
 	case "start":
-		server.Start()
+		server.Start(auth)
 	case "add-key":
 		fmt.Println(flag.Arg(0))
-		err := server.AddAuthedKey(flag.Arg(1))
+		err := auth.AddAuthdKey(flag.Arg(1))
 		if err != nil {
 			fmt.Printf("Error while loading new key. %s", err)
 		}

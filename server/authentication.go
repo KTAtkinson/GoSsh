@@ -11,78 +11,62 @@ import (
 	"os"
 )
 
-func AddAuthedKey(path string) error {
-	authWriter, err := os.Create(".ssh/authorized_keys")
-	if err != nil {
-		return err
-	}
-	writer := bufio.NewWriter(authWriter)
+type Authenticator struct {
+	authdKeys *os.File
+}
 
-	newKey, err := os.Open(path)
+func NewAuthenticator(authdKeysPath string) (*Authenticator, error) {
+	file, err := os.Create(authdKeysPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	keyBuf := make([]byte, 4096)
-	read, err := newKey.Read(keyBuf)
-	if read == 0 {
-		return errors.New("No key in key file.")
+	auth := &Authenticator{
+		authdKeys: file,
 	}
+	return auth, nil
+}
+
+func (a *Authenticator) AddAuthdKey(path string) error {
+	keyBuf, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
 	}
 	publicKey, _, _, _, err := ssh.ParseAuthorizedKey(keyBuf)
+	if err != nil {
+		return err
+	}
 	marshaledKey := ssh.MarshalAuthorizedKey(publicKey)
-	writer.Write(marshaledKey)
-	writer.Flush()
-	return err
+	a.authdKeys.Seek(0, 2)
+	_, err = a.authdKeys.Write(append([]byte{'\n'}, marshaledKey...))
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func getHostKey(keyPath string) (ssh.Signer, error) {
-	privateBytes, err := ioutil.ReadFile(keyPath)
-	if err != nil {
-		return nil, err
-	}
-	private, err := ssh.ParsePrivateKey(privateBytes)
-	return private, err
-}
-
-func authenticate(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-	fmt.Print("Authorizing keys...")
-	authedKeys, err := os.Open(".ssh/authorized_keys")
-	if err != nil {
-		fmt.Print(err)
-		return nil, err
-	}
-
-	keyReader := bufio.NewReader(authedKeys)
+func (a *Authenticator) Authenticate(key ssh.PublicKey) (bool, error) {
 	keyContent := ssh.MarshalAuthorizedKey(key)
 	keyContent = bytes.TrimRight(keyContent, "\n")
-	fmt.Printf("Client %s offered key:\n%s\n", conn.SessionID(), keyContent)
 
+	a.authdKeys.Seek(0, 0)
+	keyReader := bufio.NewReader(a.authdKeys)
 	for {
-		var curKey []byte
-		var err error
-		for err == nil {
-			var prefix []byte
-			var isPrefix bool
-			prefix, isPrefix, err = keyReader.ReadLine()
-			curKey = append(curKey, prefix...)
-
-			if !isPrefix {
-				break
-			}
+		curKey, err := keyReader.ReadBytes('\n')
+		if err != nil && err != io.EOF {
+			return false, errors.New("Failed to load keys from server")
 		}
-
-		if err == io.EOF {
-			return nil, errors.New("Failed to authenticate")
-		} else if err != nil {
-			return nil, errors.New("Failed to load keys from server")
+		if curKey != nil {
+			curKey = bytes.TrimRight(curKey, "\n")
 		}
 
 		fmt.Printf("Found key:\n%s\n", curKey)
 		if bytes.Equal(keyContent, curKey) {
+			return true, nil
+		}
+		if err == io.EOF {
 			break
 		}
 	}
-	return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
+	return false, nil
+	// return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
 }

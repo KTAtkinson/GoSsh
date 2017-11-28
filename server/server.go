@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"github.com/ktatkinson/GoSsh/pty"
 	"golang.org/x/crypto/ssh"
+	"io/ioutil"
 	"net"
 	"os"
 )
 
-func Start() {
+func Start(auth *Authenticator) {
 	listener, err := net.Listen("tcp4", ":22")
 	fmt.Printf("Will listen at port %v\n", listener.Addr())
 	if err != nil {
@@ -29,7 +30,7 @@ func Start() {
 			os.Exit(1)
 		}
 
-		serverConf := &ssh.ServerConfig{PublicKeyCallback: authenticate}
+		serverConf := &ssh.ServerConfig{PublicKeyCallback: makeAuthCallback(auth)}
 		serverConf.AddHostKey(privateKey)
 		_, chans, reqs, err := ssh.NewServerConn(conn, serverConf)
 		if err != nil {
@@ -70,5 +71,27 @@ func handleRequests(ins <-chan *ssh.Request, ch ssh.Channel) {
 		}
 		fmt.Println("Request type:", req.Type)
 		fmt.Println("Payload:", string(req.Payload))
+	}
+}
+
+func getHostKey(keyPath string) (ssh.Signer, error) {
+	privateKey, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		return nil, err
+	}
+	private, err := ssh.ParsePrivateKey(privateKey)
+	return private, err
+}
+
+func makeAuthCallback(auth *Authenticator) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
+	return func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+		authd, err := auth.Authenticate(key)
+		if err != nil {
+			return nil, err
+		} else if !authd {
+			return nil, nil
+		}
+
+		return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
 	}
 }
