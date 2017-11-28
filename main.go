@@ -21,16 +21,21 @@ func main() {
 	}
 
 	auth, err := server.NewAuthenticator("/.ssh/authorized_keys")
+    if err != nil {
+        fmt.Println(err)
+        os.Exit(1)
+    }
+    srvr, err := server.New(ip, port, "/.ssh/key.rsa", auth)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
 	switch action {
 	case "start":
-		server.Start(auth)
+		srvr.Start()
 	case "add-key":
 		fmt.Println(flag.Arg(0))
-		err := auth.AddAuthdKey(flag.Arg(1))
+		err = srvr.AddAuthdKey(flag.Arg(1))
 		if err != nil {
 			fmt.Printf("Error while loading new key. %s", err)
 		}

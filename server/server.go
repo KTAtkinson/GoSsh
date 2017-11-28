@@ -10,8 +10,40 @@ import (
     "errors"
 )
 
-func Start(auth *Authenticator) {
-	listener, err := net.Listen("tcp4", ":22")
+type authenticator interface {
+    Authenticate(ssh.PublicKey) (bool, error)
+    AddAuthdKey(string) (error)
+}
+
+type Server struct {
+    authenticator
+    ip string
+    port int
+
+    requestsHandler func(<-chan *ssh.Request, ssh.Channel)
+    hostKey ssh.Signer
+}
+
+func New(ip string, port int, hostKeyPath string, keyAuthenticator authenticator) (*Server, error) {
+    key, err := getHostKey(hostKeyPath)
+    if err != nil {
+        return nil, err
+    }
+    return &Server{
+        authenticator: keyAuthenticator,
+        ip: ip,
+        port: port,
+        requestsHandler: handleRequests,
+        hostKey: key,
+    }, nil
+}
+
+func (s *Server) HostAddr() string  {
+    return fmt.Sprintf("%s:%d", s.ip, s.port)
+}
+
+func (s *Server) Start() {
+	listener, err := net.Listen("tcp4", s.HostAddr())
 	fmt.Printf("Will listen at port %v\n", listener.Addr())
 	if err != nil {
 		fmt.Println(err)
@@ -25,25 +57,19 @@ func Start(auth *Authenticator) {
 			os.Exit(1)
 		}
 
-		privateKey, err := getHostKey(".ssh/key.rsa")
-		if err != nil {
-			fmt.Println("Failed to load host key.")
-			os.Exit(1)
-		}
-
-		serverConf := &ssh.ServerConfig{PublicKeyCallback: makeAuthCallback(auth)}
-		serverConf.AddHostKey(privateKey)
+		serverConf := &ssh.ServerConfig{PublicKeyCallback: s.AuthenticateKey}
+		serverConf.AddHostKey(s.hostKey)
 		_, chans, reqs, err := ssh.NewServerConn(conn, serverConf)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("Error connecting to client: %v", err))
 		}
 
 		go ssh.DiscardRequests(reqs)
-		go handleChannels("", chans)
+		go s.handleChannels("", chans)
 	}
 }
 
-func handleChannels(key string, chans <-chan ssh.NewChannel) {
+func (s *Server) handleChannels(key string, chans <-chan ssh.NewChannel) {
 	for nChan := range chans {
 		if nChan.ChannelType() != "session" {
 			nChan.Reject(ssh.UnknownChannelType, "unknown channel type")
@@ -56,11 +82,21 @@ func handleChannels(key string, chans <-chan ssh.NewChannel) {
 		}
 		ch.Write([]byte("Authenticated successfully! Welcome to GoSsh.\r\n"))
 		term := pty.NewTerminal(ch, ">>> ")
-		go handleRequests(reqs, ch)
+		go s.requestsHandler(reqs, ch)
 		go term.Run()
 	}
 }
 
+func(s *Server) AuthenticateKey(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
+    authd, err := s.Authenticate(key)
+    if err != nil {
+        return nil, err
+    } else if !authd {
+        return nil, errors.New("Failed to authenticate (public key)")
+    }
+
+    return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
+}
 func handleRequests(ins <-chan *ssh.Request, ch ssh.Channel) {
 	defer ch.Close()
 	for req := range ins {
@@ -82,17 +118,4 @@ func getHostKey(keyPath string) (ssh.Signer, error) {
 	}
 	private, err := ssh.ParsePrivateKey(privateKey)
 	return private, err
-}
-
-func makeAuthCallback(auth *Authenticator) func(ssh.ConnMetadata, ssh.PublicKey) (*ssh.Permissions, error) {
-	return func(conn ssh.ConnMetadata, key ssh.PublicKey) (*ssh.Permissions, error) {
-		authd, err := auth.Authenticate(key)
-		if err != nil {
-			return nil, err
-		} else if !authd {
-			return nil, errors.New("Failed to authenticate (public key)")
-		}
-
-		return &ssh.Permissions{Extensions: map[string]string{"authenticated": "true"}}, nil
-	}
 }
