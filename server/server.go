@@ -23,18 +23,14 @@ type Server struct {
 	hostKey         ssh.Signer
 }
 
-func New(ip string, port int, hostKeyPath string, keyAuthenticator authenticator) (*Server, error) {
-	key, err := getHostKey(hostKeyPath)
-	if err != nil {
-		return nil, err
-	}
+func New(ip string, port int, hostKey ssh.Signer, keyAuthenticator authenticator) (*Server) {
 	return &Server{
 		authenticator:   keyAuthenticator,
 		ip:              ip,
 		port:            port,
 		requestsHandler: handleRequests,
-		hostKey:         key,
-	}, nil
+		hostKey:         hostKey,
+	}
 }
 
 func (s *Server) HostAddr() string {

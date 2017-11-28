@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/KTAtkinson/GoSsh/server"
 	"os"
+    "io/ioutil"
+    "golang.org/x/crypto/ssh"
 )
 
 func main() {
@@ -25,11 +27,9 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	srvr, err := server.New(ip, port, "/.ssh/key.rsa", auth)
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(1)
-	}
+    hostKey := getHostKey("/.ssh/key.rsa")
+	srvr := server.New(ip, port, hostKey, auth)
+
 	switch action {
 	case "start":
 		err = srvr.Start()
@@ -44,4 +44,18 @@ func main() {
 			fmt.Printf("Error while loading new key. %s", err)
 		}
 	}
+}
+
+func getHostKey(keyPath string) (ssh.Signer) {
+	privateKey, err := ioutil.ReadFile(keyPath)
+	if err != nil {
+		fmt.Println("Failed to load host key:", err.Error())
+        os.Exit(1)
+    }
+	private, err := ssh.ParsePrivateKey(privateKey)
+    if err != nil {
+        fmt.Println("Failed to load key from file:", err.Error())
+        os.Exit(1)
+    }
+	return private
 }
