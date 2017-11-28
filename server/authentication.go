@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"errors"
-	"fmt"
 	"golang.org/x/crypto/ssh"
 	"io"
 	"io/ioutil"

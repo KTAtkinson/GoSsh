@@ -7,7 +7,6 @@ import (
 	"golang.org/x/crypto/ssh"
 	"io/ioutil"
 	"net"
-	"os"
 )
 
 type authenticator interface {

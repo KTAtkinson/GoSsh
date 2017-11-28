@@ -33,7 +33,7 @@ func main() {
 	switch action {
 	case "start":
 		err = srvr.Start()
-		if err != null {
+		if err != nil {
 			fmt.Print(err)
 			os.Exit(1)
 		}
