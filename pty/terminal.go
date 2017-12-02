@@ -38,7 +38,13 @@ func (t *Terminal) Run() {
 		}
 
         outs, isPrefix := t.processByte(reader[0])
-		t.channel.Write(outs)
+		bWrite, err := t.channel.Write(outs)
+        if err != nil {
+            fmt.Printf("Error while writing bytes. %q\n", err.Error())
+        } else if bWrite < 1 {
+            fmt.Println("No bytes written.")
+        }
+
         if !isPrefix {
             t.writePrompt()
         }
